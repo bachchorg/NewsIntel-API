@@ -1,0 +1,6 @@
+@NewsIntel.API_HostAddress = http://localhost:5155
+
+GET {{NewsIntel.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
