@@ -18,8 +18,11 @@ var pgConnection = Environment.GetEnvironmentVariable("DATABASE_URL")
 
 if (!string.IsNullOrEmpty(pgConnection))
 {
-    // Production: PostgreSQL (Render.com provides DATABASE_URL)
-    var connStr = pgConnection.StartsWith("postgres://") ? ConvertPostgresUrl(pgConnection) : pgConnection;
+    // Production: PostgreSQL (Render.com provides DATABASE_URL as postgres:// or postgresql://)
+    var connStr = pgConnection.StartsWith("postgres://") || pgConnection.StartsWith("postgresql://")
+        ? ConvertPostgresUrl(pgConnection)
+        : pgConnection;
+    Console.WriteLine($"[Startup] Using PostgreSQL. Host parsed: {(connStr.Contains("Host=") ? "yes" : "raw")}");
     builder.Services.AddDbContext<NewsIntelDbContext>(opts => opts.UseNpgsql(connStr));
 }
 else
@@ -92,10 +95,25 @@ app.MapHub<NewsHub>("/hubs/news");
 
 app.Run();
 
-// Convert postgres:// URL (from Render) to Npgsql connection string
+// Convert postgres:// or postgresql:// URL (from Render) to Npgsql connection string
 static string ConvertPostgresUrl(string url)
 {
-    var uri = new Uri(url);
-    var userInfo = uri.UserInfo.Split(':');
-    return $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+    try
+    {
+        var uri = new Uri(url);
+        var userInfo = uri.UserInfo.Split(':');
+        var host = uri.Host;
+        var port = uri.Port > 0 ? uri.Port : 5432;
+        var database = uri.AbsolutePath.TrimStart('/');
+        var username = userInfo.Length > 0 ? userInfo[0] : "";
+        var password = userInfo.Length > 1 ? userInfo[1] : "";
+        var result = $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+        Console.WriteLine($"[Startup] Parsed DB connection: Host={host}, Port={port}, Database={database}, User={username}");
+        return result;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Startup] Failed to parse DATABASE_URL: {ex.Message}");
+        throw;
+    }
 }
