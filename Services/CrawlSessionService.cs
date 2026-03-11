@@ -116,14 +116,14 @@ public class CrawlSessionService
         return ToDto(s);
     }
 
-    public async Task<SessionKeyword?> AddKeywordAsync(Guid sessionId, string term, string logic)
+    public async Task<SessionKeywordDto?> AddKeywordAsync(Guid sessionId, string term, string logic)
     {
         var s = await _db.Sessions.FindAsync(sessionId);
         if (s == null) return null;
         var kw = new SessionKeyword { CrawlSessionId = sessionId, Term = term, Logic = logic };
         _db.Keywords.Add(kw);
         await _db.SaveChangesAsync();
-        return kw;
+        return new SessionKeywordDto(kw.Id, kw.Term, kw.Logic);
     }
 
     public async Task<bool> RemoveKeywordAsync(int keywordId)
